@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Date Logic Calculator</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+        --page-background: radial-gradient(circle at 20% 20%, #f8fafc 0%, #e0f2fe 45%, #dbeafe 100%);
+        --panel-surface: rgba(255, 255, 255, 0.78);
+        --panel-border: rgba(148, 163, 184, 0.3);
+        --title-color: #0f172a;
+        --body-color: #1e293b;
+        --muted-color: #64748b;
+        --accent: #2563eb;
+        --accent-soft: rgba(37, 99, 235, 0.14);
+        --shadow-soft: 0 24px 60px rgba(15, 23, 42, 0.14);
+        --radius-lg: 1.75rem;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: clamp(2rem, 5vw, 4rem) clamp(1.25rem, 4vw, 3.5rem);
+        background: var(--page-background);
+        color: var(--body-color);
+      }
+
+      main {
+        width: min(540px, 100%);
+        display: flex;
+        justify-content: center;
+        background: var(--panel-surface);
+        border-radius: var(--radius-lg);
+        padding: clamp(2.25rem, 5vw, 3.5rem);
+        border: 1px solid var(--panel-border);
+        box-shadow: var(--shadow-soft);
+        backdrop-filter: blur(18px);
+        position: relative;
+        overflow: hidden;
+      }
+
+      main::before,
+      main::after {
+        content: "";
+        position: absolute;
+        width: clamp(220px, 30vw, 320px);
+        height: clamp(220px, 30vw, 320px);
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), transparent 70%);
+        filter: blur(0.2px);
+        z-index: 0;
+      }
+
+      main::before {
+        top: -18%;
+        right: -12%;
+      }
+
+      main::after {
+        bottom: -20%;
+        left: -15%;
+      }
+
+      .calculator {
+        position: relative;
+        z-index: 1;
+      }
+
+      form {
+        display: grid;
+        gap: 1.5rem;
+        padding: clamp(1.75rem, 4vw, 2.5rem);
+        background: rgba(255, 255, 255, 0.86);
+        border-radius: calc(var(--radius-lg) - 0.35rem);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        font-weight: 600;
+        color: var(--muted-color);
+        font-size: 0.95rem;
+      }
+
+      input[type="date"],
+      select {
+        padding: 0.75rem 0.85rem;
+        border: 1px solid rgba(148, 163, 184, 0.7);
+        border-radius: 0.85rem;
+        font-size: 1rem;
+        background: rgba(255, 255, 255, 0.92);
+        transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        color: inherit;
+      }
+
+      input[type="date"]:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px var(--accent-soft);
+        transform: translateY(-1px);
+      }
+
+      .result {
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(37, 99, 235, 0.08));
+        border-radius: 1.1rem;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        padding: 1.4rem;
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .result h2 {
+        margin: 0;
+        font-size: 1.15rem;
+        color: var(--accent);
+        letter-spacing: 0.01em;
+      }
+
+      .info-card {
+        display: grid;
+        gap: 0.75rem;
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 1rem;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        padding: 1.25rem 1.35rem;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+      }
+
+      .info-card h3 {
+        margin: 0;
+        font-size: 1.02rem;
+        color: var(--title-color);
+        letter-spacing: 0.01em;
+      }
+
+      .link-button {
+        justify-self: start;
+        border: none;
+        background: transparent;
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: color 160ms ease, transform 160ms ease;
+      }
+
+      .link-button::after {
+        content: "→";
+        font-size: 0.9rem;
+        transition: transform 160ms ease;
+      }
+
+      .link-button:hover,
+      .link-button:focus-visible {
+        color: #1d4ed8;
+        outline: none;
+        transform: translateX(1px);
+      }
+
+      .link-button:hover::after,
+      .link-button:focus-visible::after {
+        transform: translateX(2px);
+      }
+
+      .result dl {
+        margin: 0;
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .result dt {
+        font-weight: 600;
+        color: var(--title-color);
+      }
+
+      .result dd {
+        margin: 0;
+        color: var(--muted-color);
+        font-size: 0.96rem;
+      }
+
+      .muted {
+        color: var(--muted-color);
+        line-height: 1.6;
+        font-size: 0.96rem;
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding: 1.75rem;
+        }
+
+        main {
+          padding: clamp(1.75rem, 5vw, 2.5rem);
+        }
+
+        form {
+          padding: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <form class="calculator" aria-labelledby="calculator-heading">
+        <div class="result" id="result" aria-live="polite">
+          <h2 id="calculator-heading">Result</h2>
+          <p class="muted">Select a date to see the calculated day.</p>
+        </div>
+
+        <label>
+          Reference date
+          <input id="date-input" type="date" />
+        </label>
+
+        <label>
+          Calculation logic
+          <select id="logic-select">
+            <option value="35y+60d">35y + 60d adjustment</option>
+          </select>
+        </label>
+
+        <div class="info-card" id="today-shortcut">
+          <h3>Closest future result</h3>
+          <p class="muted">Loading the closest future match…</p>
+        </div>
+      </form>
+    </main>
+
+    <script>
+      const dateInput = document.getElementById("date-input");
+      const logicSelect = document.getElementById("logic-select");
+      const resultContainer = document.getElementById("result");
+      const todayShortcutContainer = document.getElementById("today-shortcut");
+
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+      function parseDate(value) {
+        if (!value) return null;
+        const [year, month, day] = value.split("-").map(Number);
+        if (!year || !month || !day) return null;
+        return new Date(Date.UTC(year, month - 1, day));
+      }
+
+      function formatDate(date) {
+        return date.toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          timeZone: "UTC",
+        });
+      }
+
+      function addYears(date, years) {
+        const result = new Date(date);
+        result.setUTCFullYear(result.getUTCFullYear() + years);
+        return result;
+      }
+
+      function addDays(date, days) {
+        const result = new Date(date);
+        result.setUTCDate(result.getUTCDate() + days);
+        return result;
+      }
+
+      function daysBetween(start, end) {
+        return Math.round((end - start) / MS_PER_DAY);
+      }
+
+      function getFirstOfNextMonth(date) {
+        const result = new Date(date);
+        result.setUTCDate(1);
+        result.setUTCMonth(result.getUTCMonth() + 1);
+        return result;
+      }
+
+      function getTodayUtc() {
+        const now = new Date();
+        return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      }
+
+      function formatForInput(date) {
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(date.getUTCDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function findClosestFutureResultFor35yPlus60d(today) {
+        const maxYearsToSearch = 120;
+        const maxDaysToSearch = maxYearsToSearch * 366;
+        let bestMatch = null;
+
+        for (let offset = 0; offset <= maxDaysToSearch; offset += 1) {
+          const referenceDate = addDays(today, offset);
+          const calculation = calculate35yPlus60d(referenceDate);
+          const finalDate = calculation.finalDate;
+
+          if (finalDate <= today) {
+            continue;
+          }
+
+          const distanceFromToday = daysBetween(today, finalDate);
+
+          if (
+            !bestMatch ||
+            distanceFromToday < bestMatch.distanceFromToday ||
+            (distanceFromToday === bestMatch.distanceFromToday && finalDate < bestMatch.finalDate)
+          ) {
+            bestMatch = {
+              referenceDate,
+              finalDate,
+              distanceFromToday,
+              gapToNextMonth: calculation.steps.gapToNextMonth,
+              totalDaysSubtracted: calculation.steps.totalDaysSubtracted,
+            };
+
+            if (bestMatch.distanceFromToday === 1) {
+              break;
+            }
+          }
+        }
+
+        return bestMatch;
+      }
+
+      function calculate35yPlus60d(selectedDate) {
+        const thirtyFiveYearsBack = addYears(selectedDate, -35);
+        const minusSixtyDays = addDays(thirtyFiveYearsBack, -60);
+        const firstOfNextMonth = getFirstOfNextMonth(selectedDate);
+        const gapToNextMonth = daysBetween(selectedDate, firstOfNextMonth);
+        const adjustedDate = addDays(minusSixtyDays, -gapToNextMonth);
+        const totalDaysSubtracted = 60 + gapToNextMonth;
+
+        return {
+          finalDate: adjustedDate,
+          steps: {
+            thirtyFiveYearsBack,
+            minusSixtyDays,
+            firstOfNextMonth,
+            gapToNextMonth,
+            totalDaysSubtracted,
+          },
+        };
+      }
+
+      function renderResult(calculation) {
+        if (!calculation) {
+          resultContainer.innerHTML = `
+            <h2 id="calculator-heading">Result</h2>
+            <p class="muted">Select a date to see the calculated day.</p>
+          `;
+          return;
+        }
+
+        const { finalDate, steps } = calculation;
+        const template = `
+          <h2 id="calculator-heading">Result</h2>
+          <dl>
+            <div>
+              <dt>35 years back</dt>
+              <dd>${formatDate(steps.thirtyFiveYearsBack)}</dd>
+            </div>
+            <div>
+              <dt>Minus 60 days</dt>
+              <dd>${formatDate(steps.minusSixtyDays)}</dd>
+            </div>
+            <div>
+              <dt>Gap to next month</dt>
+              <dd>${steps.gapToNextMonth} day(s)</dd>
+            </div>
+            <div>
+              <dt>Short-change adjustment</dt>
+              <dd>- ${steps.gapToNextMonth} day(s)</dd>
+            </div>
+            <div>
+              <dt>Total days subtracted</dt>
+              <dd>${steps.totalDaysSubtracted} day(s)</dd>
+            </div>
+            <div>
+              <dt>Adjusted result</dt>
+              <dd>${formatDate(finalDate)}</dd>
+            </div>
+          </dl>
+        `;
+
+        resultContainer.innerHTML = template;
+      }
+
+      function handleChange() {
+        const selectedDate = parseDate(dateInput.value);
+        if (!selectedDate) {
+          renderResult(null);
+          return;
+        }
+
+        let calculation = null;
+        switch (logicSelect.value) {
+          case "35y+60d":
+            calculation = calculate35yPlus60d(selectedDate);
+            break;
+          default:
+            calculation = null;
+        }
+
+        renderResult(calculation);
+      }
+
+      function updateTodayShortcut() {
+        const today = getTodayUtc();
+        let shortcutMarkup = `
+          <h3>Closest future result</h3>
+        `;
+
+        switch (logicSelect.value) {
+          case "35y+60d": {
+            const match = findClosestFutureResultFor35yPlus60d(today);
+
+            if (match) {
+              const referenceDateLabel = formatDate(match.referenceDate);
+              const finalDateLabel = formatDate(match.finalDate);
+              const todayLabel = formatDate(today);
+              const isoValue = formatForInput(match.referenceDate);
+              const distanceLabel =
+                match.distanceFromToday === 1
+                  ? "1 day"
+                  : `${match.distanceFromToday} days`;
+
+              shortcutMarkup += `
+                <p class="muted">
+                  To reach the nearest future result relative to <strong>${todayLabel}</strong>,
+                  pick <strong>${referenceDateLabel}</strong>. It produces <strong>${finalDateLabel}</strong>,
+                  which is ${distanceLabel} ahead. The gap to the next month on that day is
+                  ${match.gapToNextMonth} day(s).
+                </p>
+                <button type="button" class="link-button" data-date="${isoValue}">
+                  Use this date
+                </button>
+              `;
+            } else {
+              shortcutMarkup += `
+                <p class="muted">
+                  We couldn't determine a future reference date that yields a future result.
+                </p>
+              `;
+            }
+
+            break;
+          }
+
+          default:
+            shortcutMarkup += `
+              <p class="muted">No shortcut is available for the selected logic yet.</p>
+            `;
+        }
+
+        todayShortcutContainer.innerHTML = shortcutMarkup;
+
+        const shortcutButton = todayShortcutContainer.querySelector("button[data-date]");
+        if (shortcutButton) {
+          shortcutButton.addEventListener("click", () => {
+            dateInput.value = shortcutButton.dataset.date;
+            handleChange();
+          });
+        }
+      }
+
+      dateInput.addEventListener("change", handleChange);
+      logicSelect.addEventListener("change", handleChange);
+      logicSelect.addEventListener("change", updateTodayShortcut);
+
+      updateTodayShortcut();
+    </script>
+  </body>
+</html>
