@@ -66,6 +66,19 @@
         font-size: 1.15rem;
       }
 
+      .shortcut-card {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: #eff6ff;
+        border-radius: 0.75rem;
+        border: 1px solid #bfdbfe;
+      }
+
+      .shortcut-card h2 {
+        margin: 0 0 0.75rem 0;
+        font-size: 1.05rem;
+      }
+
       .result dt {
         font-weight: 600;
       }
@@ -96,6 +109,10 @@
           <option value="35y+60d">35y + 60d adjustment</option>
         </select>
       </label>
+      <section class="shortcut-card" id="shortcut-card" aria-live="polite">
+        <h2>Shortcut</h2>
+        <p class="muted">Select a date to see a quick subtraction summary.</p>
+      </section>
       <section class="result" id="result" aria-live="polite">
         <h2>Result</h2>
         <p class="muted">Select a date to see the calculated day.</p>
@@ -105,6 +122,7 @@
       const dateInput = document.getElementById("date-input");
       const logicSelect = document.getElementById("logic-select");
       const resultContainer = document.getElementById("result");
+      const shortcutCard = document.getElementById("shortcut-card");
 
       function parseDate(value) {
         if (!value) return null;
@@ -139,6 +157,12 @@
         return Math.round((end - start) / msPerDay);
       }
 
+      function normalizeToUTC(date) {
+        const normalized = new Date(date);
+        normalized.setUTCHours(0, 0, 0, 0);
+        return normalized;
+      }
+
       function getFirstOfNextMonth(date) {
         const result = new Date(date);
         result.setUTCDate(1);
@@ -148,18 +172,18 @@
 
       function calculate35yPlus60d(selectedDate) {
         const thirtyFiveYearsBack = addYears(selectedDate, -35);
-        const minusSixtyDays = addDays(thirtyFiveYearsBack, -60);
         const firstOfNextMonth = getFirstOfNextMonth(selectedDate);
         const gapToNextMonth = daysBetween(selectedDate, firstOfNextMonth);
-        const adjustedDate = addDays(minusSixtyDays, gapToNextMonth);
+        const daysToSubtract = gapToNextMonth + 60;
+        const adjustedDate = addDays(thirtyFiveYearsBack, -daysToSubtract);
 
         return {
           finalDate: adjustedDate,
           steps: {
             thirtyFiveYearsBack,
-            minusSixtyDays,
             firstOfNextMonth,
             gapToNextMonth,
+            daysToSubtract,
           },
         };
       }
@@ -177,13 +201,13 @@
         const template = `
           <h2>Result</h2>
           <dl>
-            <dt>35 years back</dt>
-            <dd>${formatDate(steps.thirtyFiveYearsBack)}</dd>
-            <dt>Minus 60 days</dt>
-            <dd>${formatDate(steps.minusSixtyDays)}</dd>
             <dt>Gap to next month</dt>
             <dd>${steps.gapToNextMonth} day(s)</dd>
-            <dt>Adjusted result</dt>
+            <dt>Gap + 60 days to subtract</dt>
+            <dd>${steps.daysToSubtract} day(s)</dd>
+            <dt>35 years back</dt>
+            <dd>${formatDate(steps.thirtyFiveYearsBack)}</dd>
+            <dt>Final outcome</dt>
             <dd>${formatDate(finalDate)}</dd>
           </dl>
         `;
@@ -191,10 +215,76 @@
         resultContainer.innerHTML = template;
       }
 
+      function renderShortcut(calculation, baseDate) {
+        if (!shortcutCard) return;
+
+        if (!calculation || !baseDate) {
+          if (fallbackShortcut) {
+            const { calculation: fallbackCalc, baseDate: fallbackBaseDate } =
+              fallbackShortcut;
+            shortcutCard.innerHTML = `
+              <h2>Shortcut</h2>
+              <p>
+                Next upcoming result lands on <strong>${formatDate(
+                  fallbackCalc.finalDate
+                )}</strong>.
+              </p>
+              <p class="muted">
+                Derived from ${formatDate(
+                  fallbackBaseDate
+                )} by subtracting ${fallbackCalc.steps.daysToSubtract} day(s)
+                (gap of ${fallbackCalc.steps.gapToNextMonth} + 60).
+              </p>
+            `;
+            return;
+          }
+
+          shortcutCard.innerHTML = `
+            <h2>Shortcut</h2>
+            <p class="muted">Select a date to see a quick subtraction summary.</p>
+          `;
+          return;
+        }
+
+        shortcutCard.innerHTML = `
+          <h2>Shortcut</h2>
+          <p>
+            For <strong>${formatDate(baseDate)}</strong>, subtract <strong>${
+              calculation.steps.daysToSubtract
+            }</strong> day(s)
+            (gap of ${calculation.steps.gapToNextMonth} + 60) from the 35-year-back date.
+          </p>
+          <p class="muted">
+            35 years back: ${formatDate(
+              calculation.steps.thirtyFiveYearsBack
+            )}. Result: ${formatDate(calculation.finalDate)}.
+          </p>
+        `;
+      }
+
+      function findClosestFutureResultFor35yPlus60d(targetDate) {
+        const searchWindowDays = 40 * 366;
+        const normalizedTarget = normalizeToUTC(targetDate);
+
+        for (let dayOffset = 0; dayOffset <= searchWindowDays; dayOffset++) {
+          const baseDate = addDays(normalizedTarget, dayOffset);
+          const calculation = calculate35yPlus60d(baseDate);
+          if (calculation.finalDate >= normalizedTarget) {
+            return { baseDate, calculation };
+          }
+        }
+
+        return null;
+      }
+
+      const fallbackShortcut = findClosestFutureResultFor35yPlus60d(new Date());
+      renderShortcut(null, null);
+
       function handleChange() {
         const selectedDate = parseDate(dateInput.value);
         if (!selectedDate) {
           renderResult(null);
+          renderShortcut(null, null);
           return;
         }
 
@@ -207,6 +297,9 @@
             calculation = null;
         }
         renderResult(calculation);
+        if (calculation) {
+          renderShortcut(calculation, selectedDate);
+        }
       }
 
       dateInput.addEventListener("change", handleChange);
