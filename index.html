@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Date Logic Calculator</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: #f3f4f6;
+        color: #1f2933;
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      .card {
+        max-width: 480px;
+        background: #ffffff;
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+      }
+
+      label {
+        display: block;
+        margin-bottom: 1rem;
+        font-weight: 600;
+      }
+
+      input[type="date"],
+      select {
+        margin-top: 0.35rem;
+        width: 100%;
+        padding: 0.65rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+
+      input[type="date"]:focus,
+      select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+      }
+
+      .result {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+      }
+
+      .result h2 {
+        margin: 0 0 0.75rem 0;
+        font-size: 1.15rem;
+      }
+
+      .result dt {
+        font-weight: 600;
+      }
+
+      .result dd {
+        margin: 0 0 0.75rem 0;
+      }
+
+      .muted {
+        color: #64748b;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Date Logic Calculator</h1>
+      <p class="muted">
+        Pick a date and logic to calculate the resulting day based on your rules.
+      </p>
+      <label>
+        Choose a date
+        <input type="date" id="date-input" />
+      </label>
+      <label>
+        Calculation logic
+        <select id="logic-select">
+          <option value="35y+60d">35y + 60d adjustment</option>
+        </select>
+      </label>
+      <section class="result" id="result" aria-live="polite">
+        <h2>Result</h2>
+        <p class="muted">Select a date to see the calculated day.</p>
+      </section>
+    </main>
+    <script>
+      const dateInput = document.getElementById("date-input");
+      const logicSelect = document.getElementById("logic-select");
+      const resultContainer = document.getElementById("result");
+
+      function parseDate(value) {
+        if (!value) return null;
+        const [year, month, day] = value.split("-").map(Number);
+        if (!year || !month || !day) return null;
+        return new Date(Date.UTC(year, month - 1, day));
+      }
+
+      function formatDate(date) {
+        return date.toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          timeZone: "UTC",
+        });
+      }
+
+      function addYears(date, years) {
+        const result = new Date(date);
+        result.setUTCFullYear(result.getUTCFullYear() + years);
+        return result;
+      }
+
+      function addDays(date, days) {
+        const result = new Date(date);
+        result.setUTCDate(result.getUTCDate() + days);
+        return result;
+      }
+
+      function daysBetween(start, end) {
+        const msPerDay = 24 * 60 * 60 * 1000;
+        return Math.round((end - start) / msPerDay);
+      }
+
+      function getFirstOfNextMonth(date) {
+        const result = new Date(date);
+        result.setUTCDate(1);
+        result.setUTCMonth(result.getUTCMonth() + 1);
+        return result;
+      }
+
+      function calculate35yPlus60d(selectedDate) {
+        const thirtyFiveYearsBack = addYears(selectedDate, -35);
+        const minusSixtyDays = addDays(thirtyFiveYearsBack, -60);
+        const firstOfNextMonth = getFirstOfNextMonth(selectedDate);
+        const gapToNextMonth = daysBetween(selectedDate, firstOfNextMonth);
+        const adjustedDate = addDays(minusSixtyDays, gapToNextMonth);
+
+        return {
+          finalDate: adjustedDate,
+          steps: {
+            thirtyFiveYearsBack,
+            minusSixtyDays,
+            firstOfNextMonth,
+            gapToNextMonth,
+          },
+        };
+      }
+
+      function renderResult(calculation) {
+        if (!calculation) {
+          resultContainer.innerHTML = `
+            <h2>Result</h2>
+            <p class="muted">Select a date to see the calculated day.</p>
+          `;
+          return;
+        }
+
+        const { finalDate, steps } = calculation;
+        const template = `
+          <h2>Result</h2>
+          <dl>
+            <dt>35 years back</dt>
+            <dd>${formatDate(steps.thirtyFiveYearsBack)}</dd>
+            <dt>Minus 60 days</dt>
+            <dd>${formatDate(steps.minusSixtyDays)}</dd>
+            <dt>Gap to next month</dt>
+            <dd>${steps.gapToNextMonth} day(s)</dd>
+            <dt>Adjusted result</dt>
+            <dd>${formatDate(finalDate)}</dd>
+          </dl>
+        `;
+
+        resultContainer.innerHTML = template;
+      }
+
+      function handleChange() {
+        const selectedDate = parseDate(dateInput.value);
+        if (!selectedDate) {
+          renderResult(null);
+          return;
+        }
+
+        let calculation = null;
+        switch (logicSelect.value) {
+          case "35y+60d":
+            calculation = calculate35yPlus60d(selectedDate);
+            break;
+          default:
+            calculation = null;
+        }
+        renderResult(calculation);
+      }
+
+      dateInput.addEventListener("change", handleChange);
+      logicSelect.addEventListener("change", handleChange);
+    </script>
+  </body>
+</html>
